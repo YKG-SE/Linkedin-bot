@@ -6,6 +6,7 @@ const count = document.querySelector('#fileCount');
 const results = document.querySelector('#results');
 const reviewButton = document.querySelector('#reviewButton');
 const workflow = document.querySelector('#workflow');
+const themeToggle = document.querySelector('#themeToggle');
 const skillLabels = [
   ['accounts receivable', 'Accounts Receivable'], ['accounting', 'Accounting'], ['finance', 'Finance'], ['ifrs', 'IFRS'], ['excel', 'Excel'], ['erp', 'ERP'], ['revenue recognition', 'Revenue recognition'], ['reconciliation', 'Reconciliation'], ['collections', 'Collections'], ['audit', 'Audit'], ['treasury', 'Treasury'], ['figma', 'Figma'], ['product design', 'Product design'], ['ux design', 'UX design'], ['ui design', 'UI design'], ['react', 'React'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript'], ['python', 'Python'], ['java', 'Java'], ['sql', 'SQL'], ['aws', 'AWS'], ['project management', 'Project management']
 ];
@@ -14,6 +15,108 @@ function normalizeText(text) {
   return text.replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(Number.parseInt(code, 16)))
     .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number.parseInt(code, 10)))
     .replace(/&nbsp;/gi, ' ').replace(/[\u2013\u2014]/g, '-');
+}
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.checked = theme === 'light';
+  themeToggle.setAttribute('aria-label', theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme');
+}
+const pdfWorkerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+if (window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+function scoreCv(text, criteria) {
+  const searchable = text.toLowerCase();
+  const matchingTitle = criteria.titles.find(value => searchable.includes(value.toLowerCase()));
+  const matchedRequired = criteria.required.filter(value => searchable.includes(value.toLowerCase()));
+  const matchedPreferred = criteria.preferred.filter(value => searchable.includes(value.toLowerCase()));
+  const matchedLocation = criteria.location.find(value => {
+    const city = value.toLowerCase().split(',')[0];
+    return searchable.includes(value.toLowerCase()) || (city && searchable.includes(city));
+  });
+  const matchedExperience = criteria.experience.find(value => searchable.includes(value.toLowerCase()));
+  const score = Math.min(100,
+    criteria.titles.length && matchingTitle ? 40 : 0,
+    criteria.required.length ? Math.round((matchedRequired.length / criteria.required.length) * 35) : 0,
+    criteria.preferred.length ? Math.round((matchedPreferred.length / criteria.preferred.length) * 10) : 0,
+    criteria.location.length && matchedLocation ? 10 : 0,
+    criteria.experience.length && matchedExperience ? 5 : 0
+  );
+  const reasons = [];
+  const gaps = [];
+  if (matchingTitle) reasons.push(`Title: ${matchingTitle}`); else if (criteria.titles.length) gaps.push('Job title');
+  if (matchedRequired.length) reasons.push(`Required skills: ${matchedRequired.join(', ')}`);
+  criteria.required.filter(value => !matchedRequired.includes(value)).forEach(value => gaps.push(value));
+  if (matchedPreferred.length) reasons.push(`Preferred skills: ${matchedPreferred.join(', ')}`);
+  if (matchedLocation) reasons.push(`Location: ${matchedLocation}`); else if (criteria.location.length) gaps.push(criteria.location[0]);
+  if (matchedExperience) reasons.push(`Experience: ${matchedExperience}`); else if (criteria.experience.length) gaps.push(criteria.experience[0]);
+  if (!reasons.length) reasons.push('No selected criteria found in this CV');
+  return { score, reasons, gaps: gaps.slice(0, 6) };
+}
+function candidateName(text, filename) {
+  const ignored = /^(contact|summary|experience|education|top skills|languages|page \d)$/i;
+  const lines = text.split(/\r?\n/).map(value => value.trim()).filter(value => value && !ignored.test(value) && !/^https?:|^www\./i.test(value));
+  const role = /accountant|consultant|designer|developer|engineer|manager|specialist|analyst|director|coordinator|lead|officer|representative/i;
+  const latin = lines.find((value, index) => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}$/.test(value) && role.test(lines[index + 1] || ''));
+  if (latin) return latin;
+  const arabic = lines.find(value => /^[\u0621-\u064A]{2,}(?:\s+[\u0621-\u064A]{2,}){1,3}$/.test(value));
+  return arabic || filename.replace(/\.pdf$/i, '');
+}
+function cvSection(text, starts, ends, maxLength = 340) {
+  const lines = text.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+  const start = lines.findIndex(value => starts.some(pattern => pattern.test(value)));
+  if (start === -1) return '';
+  const collected = [];
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (ends.some(pattern => pattern.test(lines[index]))) break;
+    collected.push(lines[index]);
+  }
+  return collected.join(' ').replace(/\s+/g, ' ').slice(0, maxLength);
+}
+function extractCvDetails(text) {
+  const details = {
+    summary: cvSection(text, [/^summary$/i, /^profile$/i, /^\u0645\u0644\u062e\u0635$/, /^\u0646\u0628\u0630\u0629$/], [/^experience$/i, /^education$/i, /^\u0627\u0644\u062e\u0628\u0631\u0629/, /^\u0627\u0644\u062a\u0639\u0644\u064a\u0645$/]),
+    experience: cvSection(text, [/^experience$/i, /^work experience$/i, /^\u0627\u0644\u062e\u0628\u0631\u0629/], [/^education$/i, /^languages$/i, /^\u0627\u0644\u062a\u0639\u0644\u064a\u0645$/, /^\u0627\u0644\u0644\u063a\u0627\u062a$/]),
+    education: cvSection(text, [/^education$/i, /^\u0627\u0644\u062a\u0639\u0644\u064a\u0645$/], [/^page \d/i, /^languages$/i, /^\u0627\u0644\u0644\u063a\u0627\u062a$/]),
+    skills: cvSection(text, [/^top skills$/i, /^skills$/i, /^\u0627\u0644\u0645\u0647\u0627\u0631\u0627\u062a$/], [/^summary$/i, /^experience$/i, /^languages$/i, /^\u0627\u0644\u062e\u0628\u0631\u0629/, /^\u0627\u0644\u0644\u063a\u0627\u062a$/], 220)
+  };
+  if (!details.summary) details.summary = text.replace(/\s+/g, ' ').slice(0, 340);
+  return Object.fromEntries(Object.entries(details).filter(([, value]) => value));
+}
+function pageText(items) {
+  const lines = [];
+  let active = [];
+  let activeY;
+  items.forEach(item => {
+    const value = item.str && item.str.trim();
+    if (!value) return;
+    const y = Math.round(item.transform[5]);
+    if (active.length && Math.abs(y - activeY) > 3) { lines.push(active.join(' ')); active = []; }
+    active.push(value); activeY = y;
+  });
+  if (active.length) lines.push(active.join(' '));
+  return lines.join('\n');
+}
+async function readPdfText(file) {
+  if (!window.pdfjsLib) throw new Error('The PDF reader did not load. Check your connection and try again.');
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await window.pdfjsLib.getDocument({ data }).promise;
+  const pages = [];
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(pageText(content.items));
+  }
+  return pages.join('\n');
+}
+async function inspectCv(file, criteria) {
+  try {
+    if (file.size > 10 * 1024 * 1024) return { filename: file.name, status: 'unavailable', title: 'CV unavailable', message: 'This PDF is larger than 10 MB.' };
+    const text = await readPdfText(file);
+    if (text.replace(/\s+/g, '').length < 40) return { filename: file.name, status: 'limited', title: 'CV text unavailable', message: 'This PDF does not contain enough selectable text to review. It may be a scanned document.' };
+    return { filename: file.name, status: 'available', title: candidateName(text, file.name), cvDetails: extractCvDetails(text), ...scoreCv(text, criteria), dataQuality: 'standard' };
+  } catch {
+    return { filename: file.name, status: 'unavailable', title: 'CV unavailable', message: 'This PDF could not be read in the browser.' };
+  }
 }
 function setStage(stage) {
   const stages = ['job', 'criteria', 'files', 'results'];
@@ -166,17 +269,13 @@ profileForm.addEventListener('submit', async event => {
   if (!files.length) return;
   setReviewBusy(true);
   try {
-    const body = new FormData();
-    body.append('jobDescription', normalizeText(description.value));
-    body.append('criteria', JSON.stringify(selectedCriteria()));
-    files.forEach(file => body.append('cvs', file));
-    const response = await fetch('/api/review-cvs', { method: 'POST', body });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Unable to review these CVs.');
-    document.querySelector('#resultTitle').textContent = `${data.profiles.length} CV${data.profiles.length === 1 ? '' : 's'} reviewed`;
-    document.querySelector('#criteriaSummary').textContent = data.criteria.length ? `Scored against: ${data.criteria.join(', ')}.` : 'No criteria selected.';
+    const criteria = selectedCriteria();
+    const profiles = await Promise.all(files.map(file => inspectCv(file, criteria)));
+    const selected = Object.values(criteria).flat();
+    document.querySelector('#resultTitle').textContent = `${profiles.length} CV${profiles.length === 1 ? '' : 's'} reviewed`;
+    document.querySelector('#criteriaSummary').textContent = selected.length ? `Scored against: ${selected.join(', ')}.` : 'No criteria selected.';
     const list = document.querySelector('#profileList'); list.replaceChildren();
-    data.profiles.forEach((profile, index) => list.append(renderResult(profile, index)));
+    profiles.forEach((profile, index) => list.append(renderResult(profile, index)));
     setStage('results'); results.classList.remove('hidden');
     results.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) {
@@ -187,4 +286,10 @@ profileForm.addEventListener('submit', async event => {
   } finally { setReviewBusy(false); }
 });
 cvFiles.addEventListener('change', updateFiles);
+themeToggle.addEventListener('change', () => {
+  const theme = themeToggle.checked ? 'light' : 'dark';
+  localStorage.setItem('profile-review-theme', theme);
+  applyTheme(theme);
+});
+applyTheme(localStorage.getItem('profile-review-theme') === 'light' ? 'light' : 'dark');
 setStage('job'); updateFiles();
