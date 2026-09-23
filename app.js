@@ -34,13 +34,12 @@ function scoreCv(text, criteria) {
     return searchable.includes(value.toLowerCase()) || (city && searchable.includes(city));
   });
   const matchedExperience = criteria.experience.find(value => searchable.includes(value.toLowerCase()));
-  const score = Math.min(100,
-    criteria.titles.length && matchingTitle ? 40 : 0,
-    criteria.required.length ? Math.round((matchedRequired.length / criteria.required.length) * 35) : 0,
-    criteria.preferred.length ? Math.round((matchedPreferred.length / criteria.preferred.length) * 10) : 0,
-    criteria.location.length && matchedLocation ? 10 : 0,
-    criteria.experience.length && matchedExperience ? 5 : 0
-  );
+  const titleScore = criteria.titles.length && matchingTitle ? 40 : 0;
+  const requiredScore = criteria.required.length ? Math.round((matchedRequired.length / criteria.required.length) * 35) : 0;
+  const preferredScore = criteria.preferred.length ? Math.round((matchedPreferred.length / criteria.preferred.length) * 10) : 0;
+  const locationScore = criteria.location.length && matchedLocation ? 10 : 0;
+  const experienceScore = criteria.experience.length && matchedExperience ? 5 : 0;
+  const score = Math.min(100, titleScore + requiredScore + preferredScore + locationScore + experienceScore);
   const reasons = [];
   const gaps = [];
   if (matchingTitle) reasons.push(`Title: ${matchingTitle}`); else if (criteria.titles.length) gaps.push('Job title');
