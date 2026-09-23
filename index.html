@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="score.css" />
+    <link rel="stylesheet" href="cv-details.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar"><a class="wordmark" href="/"><span class="brand-mark"></span>profile<span>review</span></a><span class="local-status"><i></i>CVs are not stored</span></header>
+      <ol class="workflow" id="workflow" aria-label="Review progress"><li class="is-active" data-step="job"><span>1</span>Role</li><li data-step="criteria"><span>2</span>Criteria</li><li data-step="files"><span>3</span>CVs</li><li data-step="results"><span>4</span>Results</li></ol>
+      <section class="intro">
+        <p class="eyebrow">Evidence-based candidate review</p>
+        <h1>Turn CV folders into<br>clear hiring signals.</h1>
+        <p>Set the role criteria, upload English or Arabic CVs, and review every match with the evidence and gaps visible.</p>
+      </section>
+      <form class="review-form" id="jobForm">
+        <div class="field-group"><label for="jobDescription">Job description</label><textarea id="jobDescription" required placeholder="Paste the full job description..."></textarea></div>
+        <button class="review-button" type="submit"><span class="button-label">Extract role criteria</span><span class="button-spinner" aria-hidden="true"></span></button>
+      </form>
+      <section class="criteria-step hidden" id="criteriaStep"><div class="step-heading"><p class="eyebrow">Step 2: Confirm criteria</p><h2>Control what the score should reward.</h2><p>Keep the requirements that matter. Add any missing detail before reviewing CVs.</p></div><div id="criteriaGroups"></div><section class="query-preview"><p class="eyebrow">Optional LinkedIn search</p><code id="booleanQuery"></code><button class="copy-button" id="copyQuery" type="button">Copy Boolean query</button></section><button class="review-button" type="button" id="continueButton"><span class="button-label">Continue to CV upload</span><span class="button-spinner" aria-hidden="true"></span></button></section>
+      <form class="review-form profile-form hidden" id="profileForm">
+        <div class="step-heading"><p class="eyebrow">Step 2: Review CVs</p><h2>Upload the candidate CVs.</h2><p>The score uses only the selected criteria above and the text extracted from each PDF.</p></div>
+        <div class="field-group"><div class="label-row"><label for="cvFiles">Candidate CVs</label><small>PDF only, up to 20 files</small></div><input class="file-input" id="cvFiles" type="file" accept="application/pdf,.pdf" multiple><div class="cv-list" id="cvList"></div><p class="field-note">English and Arabic text PDFs are supported. Scanned PDFs without selectable text are reported as unavailable.</p></div>
+        <button class="review-button" type="submit" id="reviewButton"><span class="button-label">Review CVs</span><span class="button-count" id="fileCount">0 CVs</span><span class="button-spinner" aria-hidden="true"></span></button>
+      </form>
+      <section class="results hidden" id="results" aria-live="polite">
+        <div class="results-head"><div><p class="eyebrow">Review results</p><h2 id="resultTitle">Profiles</h2></div><p id="criteriaSummary"></p></div>
+        <div class="profile-list" id="profileList"></div>
+      </section>
+    </main>
+    <template id="resultTemplate">
+      <article class="profile-result">
+        <header class="candidate-header"><div class="candidate-identity"><span class="result-status"></span><div><h3></h3><p class="candidate-source"></p></div></div><div class="match-panel"><div class="score-ring"><strong></strong><span>match</span></div><small></small></div></header>
+        <div class="candidate-details"><section class="detail-section evidence"><p>Matched evidence</p><div class="match-reasons"></div></section><section class="detail-section gaps"><p>Needs review</p><div class="match-gaps"></div></section><section class="detail-section excerpt"><p>CV details</p><div class="cv-facts"><div data-cv="summary"><span>Profile</span><strong></strong></div><div data-cv="experience"><span>Experience</span><strong></strong></div><div data-cv="education"><span>Education</span><strong></strong></div><div data-cv="skills"><span>Skills</span><strong></strong></div></div></section></div>
+      </article>
+    </template>
+    <script src="app.js"></script>
+  </body>
+</html>

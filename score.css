@@ -1,0 +1,1 @@
+.score-ring{display:block}.score-ring strong{position:absolute;top:19px;left:0;right:0;text-align:center}.score-ring span{position:absolute;top:41px;left:0;right:0;margin:0;text-align:center}.profile-result.unavailable .score-ring{display:none}@media(max-width:600px){.score-ring strong{top:16px}.score-ring span{top:36px}}
